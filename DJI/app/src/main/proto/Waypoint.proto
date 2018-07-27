@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mcs;
+
+message Waypoint {
+
+	double latitude = 1;
+	double longtitude = 2;
+	float speed = 3;
+	float altitude = 4;
+	int32 loiter = 5; 
+
+}
+
+message WaypointList {
+	
+	repeated Waypoint waypoint = 1;
+
+}
