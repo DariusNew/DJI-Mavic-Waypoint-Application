@@ -1,0 +1,3 @@
+﻿  ConsoleApplication2.cpp
+c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(39): warning C4101: 'sendResult': unreferenced local variable
+  ConsoleApplication2.vcxproj -> C:\Users\admin\Documents\DJI Mobile App\ProtoTCP\ProtoTCP\ConsoleApplication2\x64\Debug\ConsoleApplication2.exe

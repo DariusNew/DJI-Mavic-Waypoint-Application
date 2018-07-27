@@ -1,0 +1,5 @@
+﻿  stdafx.cpp
+  ConsoleApplication2.cpp
+  ExternalInterface.pb.cc
+  Generating Code...
+libprotobufd.lib(common.cc.obj) : fatal error LNK1112: module machine type 'x64' conflicts with target machine type 'x86'
