@@ -1,3 +1,6 @@
 ﻿  ConsoleApplication2.cpp
+c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(166): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(168): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(170): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
 c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(39): warning C4101: 'sendResult': unreferenced local variable
   ConsoleApplication2.vcxproj -> C:\Users\admin\Documents\DJI Mobile App\ProtoTCP\ProtoTCP\ConsoleApplication2\x64\Debug\ConsoleApplication2.exe
