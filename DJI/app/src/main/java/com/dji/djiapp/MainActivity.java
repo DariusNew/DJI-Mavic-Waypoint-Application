@@ -173,7 +173,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void onReceive(byte[] videoBuffer, int size) {
-                showToast(Integer.toString(size));
+                //showToast(Integer.toString(size));
             }
 
 
@@ -287,7 +287,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             showToast("Disconnected");
         } else{
             if (!product.getModel().equals(Model.UNKNOWN_AIRCRAFT)){
-                showToast("Primary Video Feed");
+                //showToast("Primary Video Feed");
                 VideoFeeder.getInstance().getPrimaryVideoFeed().setCallback(mReceivedVideoDataCallBack);
             }
         }
@@ -756,6 +756,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     // Data to get from protobuf
     private void getWaypoint(WaypointOuterClass.Waypoint waypoint) {
         if (waypoint != null) {
+            Log.d(TAG, "Setting Waypoint");
             float speed = (float) waypoint.getSpeed();
             if (speed >= 15.0) speed = 15f;
             double longtitude = (double) waypoint.getLongtitude();
@@ -763,6 +764,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             float altitude = (float) waypoint.getAltitude();
             if (altitude >= 100) altitude = 100f;
             int loiter = (int) waypoint.getLoiter();
+            Log.d(TAG, Float.toString(speed) + Double.toString(longtitude) + Double.toString(latitude) + Float.toString(altitude) + Integer.toString(loiter));
             configWaypoint(new LatLng(latitude, longtitude), speed, altitude, loiter);
 
         }
@@ -781,25 +783,25 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     @Override
                     public void messageReceived(byte[] b) {
                         Log.d(TAG, "Waypoint received");
-//                        byte[] buffer = new byte [34];
-//                        for (int i = 0; i < buffer.length; i++){
-//                            buffer[i] = b[i];
-//                        }
-//
-//                        try{
-//                            WaypointOuterClass.Waypoint waypoint = WaypointOuterClass.Waypoint.parseFrom(buffer);
-//                            //getWaypoint(waypoint);
-//                            Log.d(TAG, "Waypoint added");
-//                            mTcpClient.sendMessage("Waiting for Waypoint");
-//                        } catch (InvalidProtocolBufferException e){
-//                            e.printStackTrace();
-//                        }
+                        byte[] buffer = new byte [40];
+                        for (int i = 0; i < buffer.length; i++){
+                            buffer[i] = b[i];
+                        }
 
-//                        String msg = Arrays.toString(buffer);
+                        try{
+                            WaypointOuterClass.Waypoint waypoint = WaypointOuterClass.Waypoint.parseFrom(buffer);
+                            getWaypoint(waypoint);
+                            Log.d(TAG, "Waypoint added");
+                            mTcpClient.sendMessage("Waiting for Waypoint");
+                        } catch (InvalidProtocolBufferException e){
+                            e.printStackTrace();
+                            String msg = new String(b);
+                            publishProgress(msg);
+                        }
 
-                        String msg = new String(b);
+                        String msg = Arrays.toString(buffer);
                         Log.d(TAG, msg);
-                        publishProgress(msg);
+
                     }
                 });
             } catch (NullPointerException e) {
