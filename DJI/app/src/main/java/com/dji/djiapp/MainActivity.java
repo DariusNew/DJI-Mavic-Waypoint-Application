@@ -169,15 +169,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         addListener();
 
         //DJI Camera Livefeed
-        mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
-
-            @Override
-            public void onReceive(byte[] videoBuffer, int size) {
-                //showToast(Integer.toString(size));
-            }
-
-
-        };
+//        mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
+//
+//            @Override
+//            public void onReceive(byte[] videoBuffer, int size) {
+//                //showToast(Integer.toString(size));
+//            }
+//
+//
+//        };
     }
 
     //Check and request for Permissions
@@ -276,22 +276,22 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private void onProductConnectionChange() {
         refreshSDK();
         initFlightController();
-        initVideo();
+        //initVideo();
         updateCamera(new LatLng(droneLocationLat, droneLocationLng));
     }
 
-    private void initVideo(){
-        BaseProduct product = DJIDemoApplication.getProductInstance();
-
-        if (product == null || !product.isConnected()){
-            showToast("Disconnected");
-        } else{
-            if (!product.getModel().equals(Model.UNKNOWN_AIRCRAFT)){
-                //showToast("Primary Video Feed");
-                VideoFeeder.getInstance().getPrimaryVideoFeed().setCallback(mReceivedVideoDataCallBack);
-            }
-        }
-    }
+//    private void initVideo(){
+//        BaseProduct product = DJIDemoApplication.getProductInstance();
+//
+//        if (product == null || !product.isConnected()){
+//            showToast("Disconnected");
+//        } else{
+//            if (!product.getModel().equals(Model.UNKNOWN_AIRCRAFT)){
+//                //showToast("Primary Video Feed");
+//                VideoFeeder.getInstance().getPrimaryVideoFeed().setCallback(mReceivedVideoDataCallBack);
+//            }
+//        }
+//    }
 
     private void refreshSDK() {
         BaseProduct mProduct = DJIDemoApplication.getProductInstance();
@@ -419,6 +419,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Marker marker = gMap.addMarker(markerOptions);
         marker.showInfoWindow();
         mMarkers.put(mMarkers.size(), marker);
+        Log.d(TAG, "Waypoint Marked");
     }
 
     private void markHome() {
@@ -459,7 +460,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void configWaypoint(LatLng point, float speed, float altitude, int loiter) {
-        Log.d(TAG, "Setting Waypoint");
+        Log.d(TAG, Double.toString(point.latitude) + Double.toString(point.longitude));
         Waypoint newWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
         newWaypoint.speed = speed;
         newWaypoint.altitude = altitude;
@@ -480,6 +481,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             if (error == null) showToast("Waypoint added");
             else showToast("Waypoint failed to add " + error.getDescription());
         }
+        markWaypoint(point);
     }
 
     //WayPoint Mission Functions
@@ -700,7 +702,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Log.e(TAG, "On Resume");
         super.onResume();
         initFlightController();
-        initVideo();
+        //initVideo();
         handler.postDelayed(update, 1000);
     }
 
@@ -756,7 +758,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     // Data to get from protobuf
     private void getWaypoint(WaypointOuterClass.Waypoint waypoint) {
         if (waypoint != null) {
-            Log.d(TAG, "Setting Waypoint");
             float speed = (float) waypoint.getSpeed();
             if (speed >= 15.0) speed = 15f;
             double longtitude = (double) waypoint.getLongtitude();
@@ -764,10 +765,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             float altitude = (float) waypoint.getAltitude();
             if (altitude >= 100) altitude = 100f;
             int loiter = (int) waypoint.getLoiter();
-            Log.d(TAG, Float.toString(speed) + Double.toString(longtitude) + Double.toString(latitude) + Float.toString(altitude) + Integer.toString(loiter));
-            configWaypoint(new LatLng(latitude, longtitude), speed, altitude, loiter);
 
-        }
+            LatLng pos = new LatLng(latitude, longtitude);
+            configWaypoint(pos, speed, altitude, loiter);
+
+        } else Log.d(TAG, "Waypoint Null");
     }
 
     public class DroneAsyncTask extends AsyncTask<String, String, TcpClient> {
@@ -790,7 +792,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
                         try{
                             WaypointOuterClass.Waypoint waypoint = WaypointOuterClass.Waypoint.parseFrom(buffer);
-                            getWaypoint(waypoint);
+                            float speed = (float) waypoint.getSpeed();
+                            if (speed >= 15.0) speed = 15f;
+                            double longtitude = (double) waypoint.getLongtitude();
+                            double latitude = (double) waypoint.getLatitude();
+                            float altitude = (float) waypoint.getAltitude();
+                            if (altitude >= 100) altitude = 100f;
+                            int loiter = (int) waypoint.getLoiter();
+                            String msg = "Mark " + Double.toString(latitude) + " " + Double.toString(longtitude) + " " + Float.toString(altitude) + " " + Float.toString(speed) + " " + Integer.toString(loiter);
+                            publishProgress(msg);
                             Log.d(TAG, "Waypoint added");
                             mTcpClient.sendMessage("Waiting for Waypoint");
                         } catch (InvalidProtocolBufferException e){
@@ -799,8 +809,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             publishProgress(msg);
                         }
 
-                        String msg = Arrays.toString(buffer);
-                        Log.d(TAG, msg);
+//                        String msg = new String(b);
+//                        Log.d(TAG, msg);
+//                        publishProgress(msg);
+//                        String msg = Arrays.toString(buffer);
+//                        Log.d(TAG, msg);
 
                     }
                 });
@@ -844,6 +857,18 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 startMission();
             } else if (words[0].equals("Update")){
                 updateMission();
+            } else if (words[0].equals("Mark")){
+                double latitude = Double.parseDouble(words[1]);
+                double longtitude = Double.parseDouble(words[2]);
+                float altitude = Float.parseFloat(words[3]);
+                float speed = Float.parseFloat(words[4]);
+                int loiter = Integer.parseInt(words[5]);
+                if (checkGpsCoordination(latitude, longtitude)) {
+                    Log.d(TAG, "Gps passed");
+                    LatLng pos = new LatLng(latitude, longtitude);
+                    markWaypoint(pos);
+                    configWaypoint(pos, speed, altitude, loiter);
+                }
             }
         }
     }
