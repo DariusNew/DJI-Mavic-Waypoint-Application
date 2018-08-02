@@ -23,8 +23,8 @@ import mcs.WaypointOuterClass;
 
 public class TcpClient {
 
-    private static final String SERVER_IP = "192.168.1.31";
-    //private static final String SERVER_IP = "172.29.131.159";
+//    private static final String SERVER_IP = "192.168.1.31";
+    private static final String SERVER_IP = "172.29.131.159";
     public static final int SERVER_PORT = 443;
     public static final String TAG = "TcpClient";
     private String incomingMessage, command;

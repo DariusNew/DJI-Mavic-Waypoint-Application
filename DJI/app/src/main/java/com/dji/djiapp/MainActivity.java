@@ -15,6 +15,8 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -107,10 +109,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private Button clear;
     private Button ready;
     private Button mUpdate;
-    private Button connect;
     private Button recieve;
 
-    Handler mHandler = new Handler();
+    Handler mHandler;
+    HandlerThread mHandlerThread;
+    private boolean isConnected = false;
 
     BufferedReader in;
     private TcpClient mTcpClient;
@@ -136,7 +139,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private AtomicBoolean isRegistrationInProgress = new AtomicBoolean(false);
     private static final int REQUEST_PERMISSION_CODE = 12345;
 
-    public static final String SERVER_IP = "192.168.1.31";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,16 +171,41 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         addListener();
 
         //DJI Camera Livefeed
-//        mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
-//
-//            @Override
-//            public void onReceive(byte[] videoBuffer, int size) {
-//                //showToast(Integer.toString(size));
-//            }
-//
-//
-//        };
+        mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
+
+            @Override
+            public void onReceive(byte[] videoBuffer, int size) {
+                if (isConnected) {
+                    Message message = handler.obtainMessage();
+                    message.obj = videoBuffer;
+                    message.arg1 = size;
+                    handler.sendMessage(message);
+
+                }
+
+
+                //showToast(Integer.toString(size));
+            }
+
+
+        };
+
+        mHandlerThread = new HandlerThread ("parse video");
+        mHandlerThread.start();
+        mHandler = new Handler(mHandlerThread.getLooper(), new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg){
+                byte[] buf = (byte[]) msg.obj;
+                int size = msg.arg1;
+                showToast("Handler active");
+                return false;
+
+            }
+        });
     }
+
+    //Video handler
+
 
     //Check and request for Permissions
     private void checkAndRequestPermissions() {
@@ -478,10 +505,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         if (waypointMissionBuilder.getWaypointList().size() > 1) {
             DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
-            if (error == null) showToast("Waypoint added");
-            else showToast("Waypoint failed to add " + error.getDescription());
+//            if (error == null) showToast("Waypoint added");
+//            else showToast("Waypoint failed to add " + error.getDescription());
         }
-        markWaypoint(point);
     }
 
     //WayPoint Mission Functions
@@ -558,6 +584,28 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         gMap.clear();
                     }
                 });
+//                waypointList.clear();
+//                waypointMissionBuilder.waypointList(waypointList);
+//                dronePos.clear();
+//                updateDroneLocation(droneLocationLat, droneLocationLng);
+//                mMarkers.clear();
+//                missionIndex = 0;
+                break;
+            }
+            case R.id.ready: {
+//                setHome();
+//                uploadMission();
+                showToast(Double.toString(droneLocationLat) + " " + Double.toString(droneLocationLng));
+                break;
+            }
+            case R.id.update: {
+//                updateMission();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        gMap.clear();
+                    }
+                });
                 waypointList.clear();
                 waypointMissionBuilder.waypointList(waypointList);
                 dronePos.clear();
@@ -566,16 +614,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 missionIndex = 0;
                 break;
             }
-            case R.id.ready: {
-                setHome();
-                uploadMission();
-                break;
-            }
-            case R.id.update: {
-                updateMission();
-            }
             case R.id.recieve: {
                 new DroneAsyncTask().execute();
+                break;
             }
             default:
                 break;
@@ -750,6 +791,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             updateDroneLocation(droneLocationLat, droneLocationLng);
             if (!isHome && isStart) markHome();
             handler.postDelayed(update, 1000);
+            new UpdateAsyncTask().execute();
         }
     };
 
@@ -772,6 +814,24 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         } else Log.d(TAG, "Waypoint Null");
     }
 
+    public class UpdateAsyncTask extends AsyncTask<byte[], String, Void> {
+        private static final String TAG = "UpdateAsyncTask";
+
+        @Override
+        protected Void doInBackground (byte[]... params) {
+
+            String droneLat = Double.toString(droneLocationLat);
+            String droneLng = Double.toString(droneLocationLng);
+            String droneHead = Float.toString(droneHeading);
+
+            if(isConnected) {
+                mTcpClient.sendMessage(droneLat + "," + droneLng + "," + droneHead);
+                Log.d(TAG, droneLat + "," + droneLng + "," + droneHead);
+            }
+
+            return null;
+        }
+    }
     public class DroneAsyncTask extends AsyncTask<String, String, TcpClient> {
         private static final String TAG = "DroneAsyncTask";
 
@@ -780,7 +840,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         protected TcpClient doInBackground(String... params) {
 
             try {
-                showToast("Attempting to Connect");
                 mTcpClient = new TcpClient(new TcpClient.OnMessageReceived() {
                     @Override
                     public void messageReceived(byte[] b) {
@@ -789,6 +848,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         for (int i = 0; i < buffer.length; i++){
                             buffer[i] = b[i];
                         }
+                        isConnected = true;
 
                         try{
                             WaypointOuterClass.Waypoint waypoint = WaypointOuterClass.Waypoint.parseFrom(buffer);
@@ -837,6 +897,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 float altitude = Float.parseFloat(words[3]);
                 float speed = Float.parseFloat(words[4]);
                 int loiter = Integer.parseInt(words[5]);
+                if (loiter == 1000) loiter = 0;
                 if (speed >= 15.0) speed = 15f;
                 if (altitude >= 100) altitude = 100f;
                 Log.d(TAG, words[1] + " " + words[2] + " " + words[3] + " " + words[4] + " " + words[5]);
