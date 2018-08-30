@@ -1,10 +1,6 @@
-﻿  ConsoleApplication2.cpp
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(277): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(278): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(308): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(355): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(356): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(433): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(434): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\admin\documents\dji mobile app\prototcp\prototcp\consoleapplication2\consoleapplication2\consoleapplication2.cpp(40): warning C4101: 'sendResult': unreferenced local variable
-  ConsoleApplication2.vcxproj -> C:\Users\admin\Documents\DJI Mobile App\ProtoTCP\ProtoTCP\ConsoleApplication2\x64\Debug\ConsoleApplication2.exe
+﻿  stdafx.cpp
+  ConsoleApplication2.cpp
+c:\users\admin\desktop\dji app\dji-mavic-waypoint-application\vs2017_waypoint_input\consoleapplication2\waypoint.pb.h(9): fatal error C1083: Cannot open include file: 'google/protobuf/stubs/common.h': No such file or directory
+  Waypoint.pb.cc
+c:\users\admin\desktop\dji app\dji-mavic-waypoint-application\vs2017_waypoint_input\consoleapplication2\waypoint.pb.h(9): fatal error C1083: Cannot open include file: 'google/protobuf/stubs/common.h': No such file or directory
+  Generating Code...

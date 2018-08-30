@@ -139,6 +139,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private AtomicBoolean isRegistrationInProgress = new AtomicBoolean(false);
     private static final int REQUEST_PERMISSION_CODE = 12345;
 
+//*/////////////////////
+//* WHEN THE APP IS FIRST OPENED
+//*/////////////////////
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,7 +149,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         checkAndRequestPermissions();
 
-        //User Interface
+//*/////////////////////
+//* USER INTERFACE SETUP
+//*/////////////////////
+
         setContentView(R.layout.activity_main);
         missionSwitch = (ToggleButton) findViewById(R.id.missionSwitch);
         missionSwitch.setOnCheckedChangeListener(this);
@@ -159,55 +165,28 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         recieve = (Button) findViewById(R.id.recieve);
         recieve.setOnClickListener(this);
 
-        //Google Map
+//*/////////////////////
+//* GOOGLE MAP SETUP
+//*/////////////////////
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        //DJI WayPoint Mission Manager
+//*/////////////////////
+//* LISTENER FOR THE WAYPOINT APPLICATION
+//*/////////////////////
+
         IntentFilter filter = new IntentFilter();
         filter.addAction(DJIDemoApplication.FLAG_CONNECTION_CHANGE);
         registerReceiver(mReciever, filter);
         addListener();
-
-        //DJI Camera Livefeed
-        mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
-
-            @Override
-            public void onReceive(byte[] videoBuffer, int size) {
-                if (isConnected) {
-                    Message message = handler.obtainMessage();
-                    message.obj = videoBuffer;
-                    message.arg1 = size;
-                    handler.sendMessage(message);
-
-                }
-
-
-                //showToast(Integer.toString(size));
-            }
-
-
-        };
-
-        mHandlerThread = new HandlerThread ("parse video");
-        mHandlerThread.start();
-        mHandler = new Handler(mHandlerThread.getLooper(), new Handler.Callback() {
-            @Override
-            public boolean handleMessage(Message msg){
-                byte[] buf = (byte[]) msg.obj;
-                int size = msg.arg1;
-                showToast("Handler active");
-                return false;
-
-            }
-        });
     }
 
-    //Video handler
+//*/////////////////////
+//* REQUEST FOR PHONE PERMISSIONS
+//*/////////////////////
 
-
-    //Check and request for Permissions
     private void checkAndRequestPermissions() {
         // Check for permissions
         for (String eachPermission : REQUIRED_PERMISSION_LIST) {
@@ -246,6 +225,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+//*/////////////////////
+//* DJI SDK REGISTRATION
+//*/////////////////////
+
     private void startSDKRegistration() {
         if (isRegistrationInProgress.compareAndSet(false, true)) {
             AsyncTask.execute(new Runnable() {
@@ -275,24 +258,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    //Google Maps Setup
-    @SuppressLint("MissingPermission")
-    private void setUpMap() {
-        gMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-        gMap.setOnMapClickListener(this);
-        gMap.getUiSettings().setMapToolbarEnabled(false);
-        gMap.setMyLocationEnabled(true);
-    }
+//*/////////////////////
+//* DJI WAYPOINT MANAGER SETUP
+//*/////////////////////
 
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        if (gMap == null) {
-            gMap = googleMap;
-            setUpMap();
-        }
-    }
-
-    //DJI WayPoint Manager Setup
     protected BroadcastReceiver mReciever = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -303,22 +272,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private void onProductConnectionChange() {
         refreshSDK();
         initFlightController();
-        //initVideo();
         updateCamera(new LatLng(droneLocationLat, droneLocationLng));
     }
-
-//    private void initVideo(){
-//        BaseProduct product = DJIDemoApplication.getProductInstance();
-//
-//        if (product == null || !product.isConnected()){
-//            showToast("Disconnected");
-//        } else{
-//            if (!product.getModel().equals(Model.UNKNOWN_AIRCRAFT)){
-//                //showToast("Primary Video Feed");
-//                VideoFeeder.getInstance().getPrimaryVideoFeed().setCallback(mReceivedVideoDataCallBack);
-//            }
-//        }
-//    }
 
     private void refreshSDK() {
         BaseProduct mProduct = DJIDemoApplication.getProductInstance();
@@ -344,7 +299,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    //Add Listener for WaypointMissionOperator
     private void addListener() {
         if (getWaypointMissionOperator() != null) {
             getWaypointMissionOperator().addListener(eventNotificationListener);
@@ -396,7 +350,118 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         return instance;
     }
 
-    //Updating Map on Drone Location
+//*/////////////////////
+//* DJI WAYPOINT MANAGER FUNCTIONS
+//*/////////////////////
+
+    private void configWaypoint(LatLng point, float speed, float altitude, int loiter) {
+        Log.d(TAG, Double.toString(point.latitude) + Double.toString(point.longitude));
+        Waypoint newWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
+        newWaypoint.speed = speed;
+        newWaypoint.altitude = altitude;
+        WaypointAction action = new WaypointAction(WaypointActionType.STAY, loiter);
+        newWaypoint.addAction(action);
+        waypointList.add(newWaypoint);
+        waypointMissionBuilder = new WaypointMission.Builder();
+        waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+
+        waypointMissionBuilder.finishedAction(mFinishedAction)
+                .headingMode(mHeadingMode)
+                .autoFlightSpeed(mSpeed)
+                .maxFlightSpeed(15f)
+                .flightPathMode(WaypointMissionFlightPathMode.NORMAL);
+
+        if (waypointMissionBuilder.getWaypointList().size() > 1) {
+            DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
+        }
+    }
+
+    private void uploadMission() {
+        getWaypointMissionOperator().uploadMission(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                if (djiError == null) showToast("Mission Ready");
+                else showToast("Error: " + djiError.getDescription());
+            }
+        });
+    }
+
+    private void setHome() {
+        if (mFlightController != null) {
+            mFlightController.setHomeLocationUsingAircraftCurrentLocation(new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    if (djiError != null) showToast("Error: " + djiError.getDescription());
+                }
+            });
+        }
+    }
+
+    private void startMission() {
+        getWaypointMissionOperator().startMission(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("Mission Start: " + (djiError == null ? "Successful" : djiError.getDescription()));
+            }
+        });
+        isStart = true;
+    }
+
+    private void stopMission() {
+        getWaypointMissionOperator().stopMission(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("Mission Stop: " + (djiError == null ? "Successful" : djiError.getDescription()));
+            }
+        });
+        isStart = false;
+    }
+
+    private void updateMission() {
+        for (int i = missionIndex - 1; i >= 0; i--) {
+            waypointList.remove(i);
+            waypointMissionBuilder = new WaypointMission.Builder();
+            waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+
+            waypointMissionBuilder.finishedAction(mFinishedAction)
+                    .headingMode(mHeadingMode)
+                    .autoFlightSpeed(mSpeed)
+                    .maxFlightSpeed(15f)
+                    .flightPathMode(WaypointMissionFlightPathMode.NORMAL);
+
+            if (waypointMissionBuilder.getWaypointList().size() > 1) {
+                DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
+                if (error == null) showToast("Mission updated");
+                else showToast("Mission failed to update " + error.getDescription());
+            }
+            Log.d(TAG, "Index Iteration: " + Integer.toString(i));
+        }
+    }
+
+//*/////////////////////
+//* SETTING UP THE GOOGLE MAPS
+//*/////////////////////
+
+    @SuppressLint("MissingPermission")
+    private void setUpMap() {
+        gMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        gMap.setOnMapClickListener(this);
+        gMap.getUiSettings().setMapToolbarEnabled(false);
+        gMap.setMyLocationEnabled(true);
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        if (gMap == null) {
+            gMap = googleMap;
+            setUpMap();
+        }
+    }
+
+//*/////////////////////
+//* GOOGLE MAPS FUNCTIONS TO UPDATE DRONE LOCATION
+//*/////////////////////
+
     public static boolean checkGpsCoordination(double latitude, double longitude) {
         return (latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180) && (latitude != 0f && longitude != 0f);
     }
@@ -474,7 +539,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    //Try out for drone moving
     @Override
     public void onMapClick(LatLng point) {
         configWaypoint(point, mSpeed, 20.0f, 1000);
@@ -486,94 +550,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         return false;
     }
 
-    private void configWaypoint(LatLng point, float speed, float altitude, int loiter) {
-        Log.d(TAG, Double.toString(point.latitude) + Double.toString(point.longitude));
-        Waypoint newWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
-        newWaypoint.speed = speed;
-        newWaypoint.altitude = altitude;
-        WaypointAction action = new WaypointAction(WaypointActionType.STAY, loiter);
-        newWaypoint.addAction(action);
-        waypointList.add(newWaypoint);
-        waypointMissionBuilder = new WaypointMission.Builder();
-        waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+//*/////////////////////
+//* USER INTERFACE BUTTONS AND SWITCHES
+//*/////////////////////
 
-        waypointMissionBuilder.finishedAction(mFinishedAction)
-                .headingMode(mHeadingMode)
-                .autoFlightSpeed(mSpeed)
-                .maxFlightSpeed(15f)
-                .flightPathMode(WaypointMissionFlightPathMode.NORMAL);
-
-        if (waypointMissionBuilder.getWaypointList().size() > 1) {
-            DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
-//            if (error == null) showToast("Waypoint added");
-//            else showToast("Waypoint failed to add " + error.getDescription());
-        }
-    }
-
-    //WayPoint Mission Functions
-    private void uploadMission() {
-        getWaypointMissionOperator().uploadMission(new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                if (djiError == null) showToast("Mission Ready");
-                else showToast("Error: " + djiError.getDescription());
-            }
-        });
-    }
-
-    private void setHome() {
-        if (mFlightController != null) {
-            mFlightController.setHomeLocationUsingAircraftCurrentLocation(new CommonCallbacks.CompletionCallback() {
-                @Override
-                public void onResult(DJIError djiError) {
-                    if (djiError != null) showToast("Error: " + djiError.getDescription());
-                }
-            });
-        }
-    }
-
-    private void startMission() {
-        getWaypointMissionOperator().startMission(new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                showToast("Mission Start: " + (djiError == null ? "Successful" : djiError.getDescription()));
-            }
-        });
-        isStart = true;
-    }
-
-    private void stopMission() {
-        getWaypointMissionOperator().stopMission(new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                showToast("Mission Stop: " + (djiError == null ? "Successful" : djiError.getDescription()));
-            }
-        });
-        isStart = false;
-    }
-
-    private void updateMission() {
-        for (int i = missionIndex - 1; i >= 0; i--) {
-            waypointList.remove(i);
-            waypointMissionBuilder = new WaypointMission.Builder();
-            waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
-
-            waypointMissionBuilder.finishedAction(mFinishedAction)
-                    .headingMode(mHeadingMode)
-                    .autoFlightSpeed(mSpeed)
-                    .maxFlightSpeed(15f)
-                    .flightPathMode(WaypointMissionFlightPathMode.NORMAL);
-
-            if (waypointMissionBuilder.getWaypointList().size() > 1) {
-                DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
-                if (error == null) showToast("Mission updated");
-                else showToast("Mission failed to update " + error.getDescription());
-            }
-            Log.d(TAG, "Index Iteration: " + Integer.toString(i));
-        }
-    }
-
-    //Toggle Switch Functions
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
@@ -584,12 +564,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         gMap.clear();
                     }
                 });
-//                waypointList.clear();
-//                waypointMissionBuilder.waypointList(waypointList);
-//                dronePos.clear();
-//                updateDroneLocation(droneLocationLat, droneLocationLng);
-//                mMarkers.clear();
-//                missionIndex = 0;
                 break;
             }
             case R.id.ready: {
@@ -629,13 +603,16 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         else if (isChecked == false) stopMission();
     }
 
-    //Distance calculation
+//*/////////////////////
+//* LAT LONG TO UTM CONVERSION
+//*/////////////////////
+
 //    private double checkDistance(LatLng pt1, LatLng pt2){
 //        double x = (pt2.longitude - pt1.longitude)*Math.cos((pt1.latitude+pt2.latitude)/2);
 //        double y = pt2.latitude - pt1.latitude;
 //        return 6371e3*Math.sqrt(x*x + y*y);
 //    }
-    //Lat Long to UTM Conversion
+
 //    private char getLetter (LatLng point){
 //        char letter;
 //        double lat = point.latitude;
@@ -710,7 +687,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 //        return Northing;
 //    }
 
-    //UTM to Lat Long Conversion
+//*/////////////////////
+//* UTM TO LAT LONG CONVERSION
+//*/////////////////////
+
 //    private LatLng getLatLng(String UTM){
 //        String[] parts = UTM.split(" ");
 //        int Zone = Integer.parseInt(parts[0]);
@@ -737,7 +717,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 //        return point;
 //    }
 
-    //Normal App Functions (Don't Touch!)
+//*/////////////////////
+//* NORMAL APPLICATION FUNCTIONS
+//*/////////////////////
+
     @Override
     protected void onResume() {
         Log.e(TAG, "On Resume");
@@ -782,9 +765,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         });
     }
 
-    //Protobuf
+//*/////////////////////
+//* HANDLER THREAD TO UPDATE DRONE LOCATION AT 1 HZ
+//*/////////////////////
 
-    //Receiving Data from Flight Controller
     Runnable update = new Runnable() {
         @Override
         public void run() {
@@ -796,23 +780,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     };
 
     Handler handler = new Handler();
-
-    // Data to get from protobuf
-    private void getWaypoint(WaypointOuterClass.Waypoint waypoint) {
-        if (waypoint != null) {
-            float speed = (float) waypoint.getSpeed();
-            if (speed >= 15.0) speed = 15f;
-            double longtitude = (double) waypoint.getLongtitude();
-            double latitude = (double) waypoint.getLatitude();
-            float altitude = (float) waypoint.getAltitude();
-            if (altitude >= 100) altitude = 100f;
-            int loiter = (int) waypoint.getLoiter();
-
-            LatLng pos = new LatLng(latitude, longtitude);
-            configWaypoint(pos, speed, altitude, loiter);
-
-        } else Log.d(TAG, "Waypoint Null");
-    }
 
     public class UpdateAsyncTask extends AsyncTask<byte[], String, Void> {
         private static final String TAG = "UpdateAsyncTask";
@@ -832,9 +799,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             return null;
         }
     }
+
+//*/////////////////////
+//* ASYNC TASK TO RUN TCP CLIENT IN THE BACKGROUND THREAD
+//*/////////////////////
+
     public class DroneAsyncTask extends AsyncTask<String, String, TcpClient> {
         private static final String TAG = "DroneAsyncTask";
-
 
         @Override
         protected TcpClient doInBackground(String... params) {
@@ -868,13 +839,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             String msg = new String(b);
                             publishProgress(msg);
                         }
-
-//                        String msg = new String(b);
-//                        Log.d(TAG, msg);
-//                        publishProgress(msg);
-//                        String msg = Arrays.toString(buffer);
-//                        Log.d(TAG, msg);
-
                     }
                 });
             } catch (NullPointerException e) {
@@ -902,12 +866,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 if (altitude >= 100) altitude = 100f;
                 Log.d(TAG, words[1] + " " + words[2] + " " + words[3] + " " + words[4] + " " + words[5]);
                 if (checkGpsCoordination(latitude, longtitude)) {
-                    Log.d(TAG, "GPS pass");
                     LatLng pos = new LatLng(latitude, longtitude);
                     markWaypoint(pos);
-                    Log.d(TAG, "Waypoint marked");
                     configWaypoint(pos, speed, altitude, loiter);
-                    Log.d(TAG, "Configured");
                 }
             } else if (words[0].equals("Ready")){
                 setHome();
@@ -925,7 +886,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 float speed = Float.parseFloat(words[4]);
                 int loiter = Integer.parseInt(words[5]);
                 if (checkGpsCoordination(latitude, longtitude)) {
-                    Log.d(TAG, "Gps passed");
                     LatLng pos = new LatLng(latitude, longtitude);
                     markWaypoint(pos);
                     configWaypoint(pos, speed, altitude, loiter);

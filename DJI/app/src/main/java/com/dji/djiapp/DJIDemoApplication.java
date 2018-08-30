@@ -48,7 +48,6 @@ public class DJIDemoApplication extends Application {
     }
 
     public DJIDemoApplication() {
-
     }
 
     public static synchronized BaseProduct getProductInstance() {
@@ -130,16 +129,7 @@ public class DJIDemoApplication extends Application {
             };
         int permissionCheck = ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
         int permissionCheck2 = ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_PHONE_STATE);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || (permissionCheck == 0 && permissionCheck2 ==0)) DJISDKManager.getInstance().registerApp(getApplicationContext(), mDJISDKManagerCallback);
-
-
-//        mDJIComponentListener = new BaseComponent.ComponentListener() {
-//            @Override
-//            public void onConnectivityChange(boolean b) {
-//                notifyStatusChange();
-//            }
-//        };
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || (permissionCheck == 0 && permissionCheck2 ==0)) DJISDKManager.getInstance().registerApp(getApplicationContext(), mDJISDKManagerCallback); }
 
         private void loginAccount(){
             UserAccountManager.getInstance().logIntoDJIUserAccount(this, new CommonCallbacks.CompletionCallbackWith<UserAccountState>() {
